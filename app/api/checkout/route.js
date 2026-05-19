@@ -1,7 +1,6 @@
 import Stripe from "stripe";
 
-const stripe = new Stripe("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");
-
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 export async function POST(request) {
   try {
     const session = await stripe.checkout.sessions.create({
