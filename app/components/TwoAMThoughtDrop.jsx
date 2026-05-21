@@ -263,7 +263,7 @@ setDropsRemaining(Math.max(0, FREE_DAILY_LIMIT - getDropCount()));
   // ── 6. Echo ───────────────────────────────────────────────────────────────
   async function handleEcho(id) {
     if (echoed.has(id)) return;
-    setEchoed(e => new Set([...e, id]));
+   
     setThoughts(p => p.map(t => t.id === id ? { ...t, echoes: t.echoes + 1 } : t));
     setActivePin(p => p?.id === id ? { ...p, echoes: p.echoes + 1 } : p);
     try {
