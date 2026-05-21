@@ -269,11 +269,10 @@ setDropsRemaining(Math.max(0, FREE_DAILY_LIMIT - getDropCount()));
     try {
       const { error: e } = await supabase.rpc("increment_echoes", { thought_id: id });
       if (e) throw e;
-    } catch {
-      setEchoed(e => { const n = new Set(e); n.delete(id); return n; });
+   } catch {
+      setEchoed(prev => { const n = new Set(prev); n.delete(id); return n; });
       setThoughts(p => p.map(t => t.id === id ? { ...t, echoes: t.echoes - 1 } : t));
     }
-  }
 
   // ── Map drag ──────────────────────────────────────────────────────────────
   const onMouseDown = e => { if (e.target.closest(".pin")) return; setDragging(true); setDragStart({ x: e.clientX - mapOffset.x, y: e.clientY - mapOffset.y }); };
