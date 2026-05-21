@@ -3,10 +3,17 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "../../lib/supabase";
 
 // ─── Config ────────────────────────────────────────────────────────────────
-const NEARBY_RADIUS_KM = 50; // city-wide. Tighten to 5–10 once you have users.
+const NEARBY_RADIUS_KM = 50; 
+// city-wide. Tighten to 5–10 once you have users.
 // ─── Drop limit helpers ────────────────────────────────────────────────────
 const FREE_DAILY_LIMIT = 1;
-
+const CATEGORIES = [
+  { id: "latenight", emoji: "🌙", label: "Late Night", color: "#8b7cf8" },
+  { id: "heartbreak", emoji: "💔", label: "Heartbreak", color: "#ff6b8a" },
+  { id: "funny", emoji: "😂", label: "Funny", color: "#ffd700" },
+  { id: "existential", emoji: "🌀", label: "Existential", color: "#64c8b4" },
+  { id: "grateful", emoji: "✨", label: "Grateful", color: "#ffb43c" },
+];
 function getTodayKey() {
   return `2am_drops_${new Date().toISOString().slice(0, 10)}`;
 }
@@ -127,6 +134,7 @@ export default function TwoAMThoughtDrop() {
   const [locationStatus, setLocationStatus] = useState("pending");
   const [showPaywall, setShowPaywall] = useState(false);
 const [dropsRemaining, setDropsRemaining] = useState(FREE_DAILY_LIMIT);
+const [selectedCategory, setSelectedCategory] = useState("latenight");
   const textRef = useRef();
 
   // ── 1. Ask for location on mount ─────────────────────────────────────────
@@ -227,9 +235,9 @@ const [dropsRemaining, setDropsRemaining] = useState(FREE_DAILY_LIMIT);
       : { x: 30 + Math.random() * 40, y: 30 + Math.random() * 40 };
 
     try {
-      const { data, error: e } = await supabase
+     const { data, error: insertError } = await supabase
         .from("thoughts")
-        .insert([{ text: newThought.trim(), x, y, lat, lng, echoes: 0 }])
+        .insert([{ text: newThought.trim(), x, y, lat, lng, echoes: 0, category: selectedCategory }])
         .select()
         .single();
       if (e) throw e;
@@ -341,7 +349,7 @@ setDropsRemaining(Math.max(0, FREE_DAILY_LIMIT - getDropCount()));
           {thoughts.map(pin => (
             <div key={pin.id} className={`pin-dot pin ${pulsingPins.has(pin.id)?"pin-pulse":""}`} style={{ left:`${pin.x}%`, top:`${pin.y}%` }} onClick={e => { e.stopPropagation(); setActivePin(pin); }}>
               {(pin.echoes > 20 || pin.isYours) && <div className="ripple" style={{ top:"50%", left:"50%", animationDelay:`${(String(pin.id).charCodeAt(0)%5)*.4}s` }} />}
-              <div className={pin.isYours?"yours-pin":"pin-glow"} style={{ width:pin.echoes>50?"12px":pin.echoes>20?"10px":"8px", height:pin.echoes>50?"12px":pin.echoes>20?"10px":"8px", borderRadius:"50%", background:pin.isYours?"#64c8b4":pin.echoes>50?"#ffb43c":pin.echoes>20?"#ff9a20":"#e87828", position:"relative", zIndex:2 }} />
+              <div className={pin.isYours?"yours-pin":"pin-glow"} style={{ width:pin.echoes>50?"12px":pin.echoes>20?"10px":"8px", height:pin.echoes>50?"12px":pin.echoes>20?"10px":"8px", borderRadius:"50%", background:pin.isYours?"#64c8b4":(CATEGORIES.find(c=>c.id===pin.category)?.color||"#e87828"), position:"relative", zIndex:2 }} />
             </div>
           ))}
         </div>
@@ -440,7 +448,32 @@ setDropsRemaining(Math.max(0, FREE_DAILY_LIMIT - getDropCount()));
               </div>
             </div>
             <button onClick={() => { setShowDrop(false); setNewThought(""); }} style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.07)", borderRadius:"50%", width:"32px", height:"32px", color:"#5a5840", cursor:"pointer", fontSize:"16px" }}>×</button>
-          </div>
+          </div><div style={{ display:"flex", gap:"8px", marginBottom:"16px", flexWrap:"wrap" }}>
+  {CATEGORIES.map(cat => (
+    <button
+      key={cat.id}
+      onClick={() => setSelectedCategory(cat.id)}
+      style={{
+        padding:"6px 12px",
+        borderRadius:"20px",
+        border:`1px solid ${selectedCategory === cat.id ? cat.color : "rgba(255,255,255,0.08)"}`,
+        background: selectedCategory === cat.id ? `${cat.color}22` : "transparent",
+        color: selectedCategory === cat.id ? cat.color : "#3a3828",
+        fontFamily:"'DM Mono',monospace",
+        fontSize:"11px",
+        letterSpacing:"1px",
+        cursor:"pointer",
+        transition:"all 0.15s",
+        display:"flex",
+        alignItems:"center",
+        gap:"4px",
+      }}
+    >
+      <span>{cat.emoji}</span>
+      <span>{cat.label}</span>
+    </button>
+  ))}
+</div>
           <textarea ref={textRef} autoFocus value={newThought} onChange={e => e.target.value.length <= MAX_CHARS && setNewThought(e.target.value)} placeholder="what's on your mind at this hour..." style={{ width:"100%", background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.07)", borderRadius:"14px", color:"#e8dcc8", fontFamily:"'Instrument Serif',serif", fontStyle:"italic", fontSize:"18px", padding:"16px", resize:"none", minHeight:"100px", lineHeight:1.6 }} />
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:"14px" }}>
             <span style={{ fontSize:"11px", color:newThought.length>120?"#ff6060":"#2a2818", letterSpacing:"1px" }}>{MAX_CHARS - newThought.length}</span>
