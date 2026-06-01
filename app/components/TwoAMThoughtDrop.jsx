@@ -241,7 +241,7 @@ const [selectedCategory, setSelectedCategory] = useState("latenight");
         .insert([{ text: newThought.trim(), x, y, lat, lng, echoes: 0, category: selectedCategory }])
         .select()
         .single();
-      if (e) throw e;
+     if (insertError) throw insertError;
 
       const pin = rowToPin(data, data.id, userLat, userLng);
       setMyDropId(data.id);
@@ -350,7 +350,7 @@ async function handleEcho(id) {
           {thoughts.map(pin => (
             <div key={pin.id} className={`pin-dot pin ${pulsingPins.has(pin.id)?"pin-pulse":""}`} style={{ left:`${pin.x}%`, top:`${pin.y}%` }} onClick={e => { e.stopPropagation(); setActivePin(pin); }}>
               {(pin.echoes > 20 || pin.isYours) && <div className="ripple" style={{ top:"50%", left:"50%", animationDelay:`${(String(pin.id).charCodeAt(0)%5)*.4}s` }} />}
-              <div className={pin.isYours?"yours-pin":"pin-glow"} style={{ width:pin.echoes>50?"12px":pin.echoes>20?"10px":"8px", height:pin.echoes>50?"12px":pin.echoes>20?"10px":"8px", borderRadius:"50%", background:pin.isYours?"#64c8b4":pin.echoes>50?"#ffb43c":pin.echoes>20?"#ff9a20":"#e87828", position:"relative", zIndex:2 }} />
+              <div className={pin.isYours?"yours-pin":"pin-glow"} style={{ width:pin.echoes>50?"12px":pin.echoes>20?"10px":"8px", height:pin.echoes>50?"12px":pin.echoes>20?"10px":"8px", borderRadius:"50%", background:pin.isYours?"#64c8b4":(CATEGORIES.find(c=>c.id===pin.category)?.color||"#e87828"), position:"relative", zIndex:2 }} />
             </div>
           ))}
         </div>
