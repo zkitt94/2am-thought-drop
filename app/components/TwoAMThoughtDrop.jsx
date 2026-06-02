@@ -94,10 +94,10 @@ function latLngToXY(lat, lng, cLat, cLng, radiusKm) {
   };
 }
 
-function rowToPin(row, myId, uLat, uLng) {
+function rowToPin(row, myId, uLat, uLng, radiusKm = NEARBY_RADIUS_KM) {
   const { x, y } =
     uLat != null && row.lat != null
-      ? latLngToXY(row.lat, row.lng, uLat, uLng, NEARBY_RADIUS_KM)
+      ? latLngToXY(row.lat, row.lng, uLat, uLng, radiusKm)
       : { x: row.x ?? 50, y: row.y ?? 50 };
   return {
     id: row.id,
@@ -137,7 +137,8 @@ export default function TwoAMThoughtDrop() {
 const [dropsRemaining, setDropsRemaining] = useState(FREE_DAILY_LIMIT);
 const [selectedCategory, setSelectedCategory] = useState("latenight");
   const textRef = useRef();
-
+  const userLocationRef = useRef({ lat: null, lng: null });
+const [radius, setRadius] = useState(50);
   // ── 1. Ask for location on mount ─────────────────────────────────────────
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -149,6 +150,7 @@ const [selectedCategory, setSelectedCategory] = useState("latenight");
       ({ coords }) => {
         setUserLat(coords.latitude);
         setUserLng(coords.longitude);
+        userLocationRef.current = { lat: coords.latitude, lng: coords.longitude };
         setLocationStatus("granted");
         fetchThoughts(coords.latitude, coords.longitude);
       },
@@ -161,7 +163,7 @@ const [selectedCategory, setSelectedCategory] = useState("latenight");
   }, []);
 
   // ── 2. Fetch thoughts ─────────────────────────────────────────────────────
-  async function fetchThoughts(lat, lng) {
+  async function fetchThoughts(lat, lng, radiusKm = 50) {
     setLoading(true);
     setError(null);
     try {
@@ -174,10 +176,10 @@ const [selectedCategory, setSelectedCategory] = useState("latenight");
       if (e) throw e;
 
       const filtered = lat != null
-        ? data.filter(r => r.lat == null || distanceKm(lat, lng, r.lat, r.lng) <= NEARBY_RADIUS_KM)
+        ? data.filter(r => r.lat == null || distanceKm(lat, lng, r.lat, r.lng) <= radiusKm)
         : data;
 
-      setThoughts(filtered.map(r => rowToPin(r, null, lat, lng)));
+      setThoughts(filtered.map(r => rowToPin(r, null, lat, lng, radiusKm)));
     } catch (err) {
       setError("Couldn't load thoughts. Check your connection.");
     } finally {
@@ -217,7 +219,16 @@ const [selectedCategory, setSelectedCategory] = useState("latenight");
     const iv = setInterval(() => setThoughts(p => p.map(t => ({ ...t, time: timeAgo(t.createdAt) }))), 60000);
     return () => clearInterval(iv);
   }, []);
+// ── Radius filter & localStorage restore ──────────────────────────────────
+useEffect(() => {
+  const saved = localStorage.getItem("2am_radius");
+  if (saved) setRadius(Number(saved));
+}, []);
 
+useEffect(() => {
+  if (userLat == null) return;
+  fetchThoughts(userLocationRef.current.lat, userLocationRef.current.lng, radius);
+}, [radius, userLat]);
   // ── 5. Drop a thought ─────────────────────────────────────────────────────
   async function handleDrop() {
     if (!newThought.trim() || dropping) return;
@@ -374,7 +385,24 @@ async function handleEcho(id) {
       <div style={{ position:"absolute", top:"68px", left:"50%", transform:"translateX(-50%)", zIndex:20, pointerEvents:"none" }}>
         <div style={{ background:"rgba(5,8,16,.85)", border:`1px solid ${locBadge.color}30`, borderRadius:"20px", padding:"4px 12px", fontSize:"10px", color:locBadge.color, letterSpacing:"1px", whiteSpace:"nowrap" }}>{locBadge.text}</div>
       </div>
-
+{/* RADIUS SLIDER */}
+<div style={{ position:"absolute", top:"100px", left:"50%", transform:"translateX(-50%)", zIndex:20, display:"flex", alignItems:"center", gap:"10px", background:"rgba(5,8,16,0.85)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:"20px", padding:"6px 16px" }}>
+  <span style={{ fontSize:"10px", color:"#3a3828", letterSpacing:"1px", whiteSpace:"nowrap" }}>1mi</span>
+  <input
+    type="range"
+    min="2"
+    max="50"
+    value={radius}
+    onChange={e => {
+  const val = Number(e.target.value);
+  setRadius(val);
+  localStorage.setItem("2am_radius", val);
+}}
+    style={{ width:"100px", accentColor:"#ffb43c", cursor:"pointer" }}
+  />
+  <span style={{ fontSize:"10px", color:"#3a3828", letterSpacing:"1px", whiteSpace:"nowrap" }}>50mi</span>
+  <span style={{ fontSize:"10px", color:"#ffb43c", letterSpacing:"1px", whiteSpace:"nowrap" }}>{radius}mi</span>
+</div>
       {/* LOADING */}
       {loading && <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:25, pointerEvents:"none" }}><div className="spin" style={{ width:"20px", height:"20px", border:"2px solid rgba(255,180,60,.2)", borderTopColor:"#ffb43c", borderRadius:"50%" }} /></div>}
 
